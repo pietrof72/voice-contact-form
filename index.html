@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Assistente vocale - Raccolta contatti</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      background: #f9f9f9;
+      color: #333;
+    }
+    .log {
+      margin-top: 1rem;
+      background: #fff;
+      padding: 1rem;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    button {
+      padding: 1rem;
+      font-size: 1rem;
+      border-radius: 5px;
+      border: none;
+      background: #0066cc;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎤 Assistente vocale per contatti fiera</h1>
+  <p>Clicca sul pulsante per iniziare. Ti verranno fatte delle domande a voce e potrai rispondere vocalmente.</p>
+  <button id="startBtn">Inizia dettatura</button>
+  <div class="log" id="log"></div>
+
+  <script>
+    const questions = [
+      "Qual è il nome?",
+      "Qual è il cognome?",
+      "Qual è l'email?",
+      "Qual è il numero di telefono?",
+      "Qual è il nome dell'azienda?",
+      "Hai delle note da aggiungere?"
+    ];
+
+    const responses = [];
+    let current = 0;
+
+    const synth = window.speechSynthesis;
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'it-IT';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    const log = document.getElementById('log');
+    const startBtn = document.getElementById('startBtn');
+
+    function speak(text, callback) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'it-IT';
+      utterance.onend = callback;
+      synth.speak(utterance);
+    }
+
+    function askQuestion() {
+      if (current < questions.length) {
+        speak(questions[current], () => {
+          recognition.start();
+        });
+      } else {
+        const entry = responses.join(',');
+        log.innerHTML += `<p><strong>Contatto salvato:</strong><br>${entry}</p>`;
+        downloadCSV(responses);
+        startBtn.disabled = false;
+      }
+    }
+
+    recognition.onresult = function(event) {
+      const transcript = event.results[0][0].transcript;
+      responses.push(transcript);
+      log.innerHTML += `<p><strong>${questions[current]}</strong> ${transcript}</p>`;
+      current++;
+      askQuestion();
+    };
+
+    recognition.onerror = function(event) {
+      log.innerHTML += `<p style="color:red;">Errore: ${event.error}</p>`;
+      startBtn.disabled = false;
+    };
+
+    function downloadCSV(data) {
+      const headers = ["Nome", "Cognome", "Email", "Telefono", "Azienda", "Note"];
+      const row = headers.join(",") + "\n" + data.join(",");
+      const blob = new Blob([row], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'contatto_fiera.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    startBtn.addEventListener('click', () => {
+      responses.length = 0;
+      current = 0;
+      startBtn.disabled = true;
+      log.innerHTML = '';
+      askQuestion();
+    });
+  </script>
+</body>
+</html>
